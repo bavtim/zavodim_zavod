@@ -1,6 +1,17 @@
 
 from DBdriver import engine, UsersData, Session
 
+def delete_user_info(id,user_id):
+    with Session(bind=engine) as session:
+        temp = []
+        db = session.query(UsersData).filter_by(id=id).filter_by(user_id=user_id)
+        for p in db:
+            temp.append(p.as_dict())
+        if len(temp)>0:
+            db.delete()
+            session.commit()
+        else:
+            raise Exception
 
 def add_user_info(user_id,pSQL_dbname,pSQL_dbuser,pSQL_dbpassword,pSQL_dbhost):
     with Session(bind=engine) as session:

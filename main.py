@@ -14,6 +14,8 @@ import DBcontrol
 from config import settings
 dp = Dispatcher()
 
+loop = asyncio.get_event_loop()
+DELAY = 3
 
 @dp.message(CommandStart())
 async def handle_start(message: types.Message):
@@ -58,6 +60,23 @@ async def handle_help(message: types.Message):
         text=text,
         parse_mode=ParseMode.MARKDOWN_V2,
     )
+@dp.message(F.text[:len( "Удалить БД")] == "Удалить БД")
+async def echo_message(message: types.Message):
+    strip_s = message.text[len("Удалить БД"):].split()
+    if len(strip_s) == 1:
+        try:
+            DBcontrol.delete_user_info (strip_s[0],message.chat.id)
+            await message.answer(
+                text="Успешно удалена база данных",
+            )
+        except:
+            await message.answer(
+                text="Произошла ошибка при удалении",
+            )
+    else:
+        await message.answer(
+            text="Введите сообщение в формате:\n\"Удалить БД pSQL_dbid\",\nНапример, \"Удалить БД 68\"",
+        )
 @dp.message(F.text == "Получить список БД")
 async def echo_message(message: types.Message):
 
@@ -67,6 +86,7 @@ async def echo_message(message: types.Message):
     for i in range(len(rawData)):
         row=rawData[i]
         s = f"БД № {i}\n"
+        s += f"pSQL_dbid: {row['id']}\n"
         s += f"pSQL_dbname: {row['pSQL_dbname']}\n"
         s += f"pSQL_dbuser: {row['pSQL_dbuser']}\n"
         s += f"pSQL_dbpassword: {row['pSQL_dbpassword']}\n"
@@ -114,33 +134,9 @@ async def echo_message(message: types.Message):
         )
 
 
-    print( strip_s)
-    # rawData=DBcontrol.getDBdataUsers(message.chat.id)
-    # str_temp=[]
-    # for i in range(len(rawData)):
-    #     row=rawData[i]
-    #     s = f"{i}\)"
-    #     s += f"pSQL_dbname:{row['pSQL_dbname']}\n"
-    #     s += f"pSQL_dbuser:{row['pSQL_dbuser']}\n"
-    #     s += f"pSQL_dbpassword:{row['pSQL_dbpassword']}\n"
-    #     s += f"pSQL_dbhost:{row['pSQL_dbhost']}\n"
-    #     str_temp.append(s)
-    # text = markdown.text(
-    #     markdown.markdown_decoration.quote(f"Количество указанных БД: {len(rawData)}"),
-    #     markdown.text(
-    #         markdown.underline( "Список БД пуст" if len(rawData)==0 else "Перечень БД:"),
-    #         *str_temp,
-    #     ),
-    #         sep="\n"
-    #     )
-    #
-    # await message.answer(
-    #     text=text,
-    #     parse_mode=ParseMode.MARKDOWN_V2,
-    # )
 @dp.message(F.text == "Работа с БД")
 async def echo_message(message: types.Message):
-    kb = [[types.KeyboardButton(text="Получить список БД")],[types.KeyboardButton(text="Добавить БД")]]
+    kb = [[types.KeyboardButton(text="Получить список БД")],[types.KeyboardButton(text="Добавить БД")],[types.KeyboardButton(text="Удалить БД")]]
     keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
     await message.answer(
         text=f"Работа с БД",
@@ -152,11 +148,19 @@ async def echo_message(message: types.Message):
 async def echo_message(message: types.Message):
     await message.reply(text="Что-то неизвестное, попробуйте обратиться к администратору - https://t.me/repeared_apple")
 
+async def loop_check():
+    print("tick")
+def repeat(coro, loop):
+    asyncio.ensure_future(coro(), loop=loop)
+    loop.call_later(DELAY, repeat, coro, loop)
+
 
 async def main():
     logging.basicConfig(level=logging.INFO)
-    bot = Bot(token=settings.bot_token,)
-    await dp.start_polling(bot, skip_updates=True)
+    bot = Bot(token=settings.bot_token)
+    loop = asyncio.get_event_loop()
+    loop.call_later(DELAY, repeat, loop_check, loop)
+    await dp.start_polling(bot, skip_updates=True,loop=loop)
 
 
 if __name__ == "__main__":
